@@ -1,0 +1,104 @@
+one_month = date.today() + relativedelta(months=-1)
+six_months = date.today() + relativedelta(months=-6)
+
+
+filepath = r'C:\Users\ryan.kracaw\Desktop\COPY_master_data.csv'
+df = pd.read_csv(filepath)
+
+app = df.loc[df['Region'] == 'App']
+etx = df.loc[df['Region'] == 'East Texas']
+okc = df.loc[df['Region'] == 'Mid-Con']
+nodo = df.loc[df['Region'] == 'North Dakota']
+rock = df.loc[df['Region'] == 'Rockies']
+stx = df.loc[df['Region'] == 'South Texas']
+wtx = df.loc[df['Region'] == 'West Texas']
+
+app_df = app[(app['Date'] > str(six_months)) & (app['Date'] < str(date.today()))]
+app_df = app_df.groupby('Date')['Color'].count().reset_index(name="count")
+
+etx_df = etx[(etx['Date'] > str(six_months)) & (etx['Date'] < str(date.today()))]
+etx_df = etx_df.groupby('Date')['Color'].count().reset_index(name="count")
+
+okc_df = okc[(okc['Date'] > str(six_months)) & (okc['Date'] < str(date.today()))]
+okc_df = okc_df.groupby('Date')['Color'].count().reset_index(name="count")
+
+grouped_df = df.groupby(['Region', 'Color']).size()
+grouped_df = grouped_df.reset_index()
+grouped_df = grouped_df.rename(columns = {0 : 'Count'})
+new_df = pd.DataFrame({
+    'Color' : ['Orange', 'Other', 'Red'],
+    'App' : grouped_df.loc[grouped_df['Region'] == 'App']['Count'],
+    'East Texas' : grouped_df.loc[grouped_df['Region'] == 'East Texas'].reset_index()['Count'],
+    'Mid-Con' : grouped_df.loc[grouped_df['Region'] == 'Mid-Con'].reset_index()['Count'],
+    'North Dakota' : grouped_df.loc[grouped_df['Region'] == 'North Dakota'].reset_index()['Count'],
+    'Rockies' : grouped_df.loc[grouped_df['Region'] == 'Rockies'].reset_index()['Count'],
+    'South Texas' : grouped_df.loc[grouped_df['Region'] == 'South Texas'].reset_index()['Count'],
+    'West Texas' : grouped_df.loc[grouped_df['Region'] == 'West Texas'].reset_index()['Count']
+})
+
+
+all_options = {
+    'All' : ['1M', '6M', 'YTD', '1Y', 'Max'],
+    'Appalachia' : ['1M', '6M', 'YTD', '1Y', 'Max'],
+    'East Texas' : ['1M', '6M', 'YTD', '1Y', 'Max'],
+    'Mid-Con' : ['1M', '6M', 'YTD', '1Y', 'Max'],
+    'North Dakota' : ['1M', '6M', 'YTD', '1Y', 'Max'],
+    'Rockies' : ['1M', '6M', 'YTD', '1Y', 'Max'],
+    'South Texas' : ['1M', '6M', 'YTD', '1Y', 'Max'],
+    'West Texas' : ['1M', '6M', 'YTD', '1Y', 'Max']
+}
+
+app = Dash(__name__)
+
+app.layout = html.Div([
+    html.H1('MOC Visualizations'),
+    html.Hr(),
+    dcc.RadioItems(list(all_options.keys()), 'All', id='regions-radio'),
+    html.Hr(),
+    dcc.RadioItems(id='times-radio'),
+    html.Hr(),
+    dcc.Graph(id='display-selected-values'),
+    #html.Div(id='display-selected-values')
+    #dcc.RadioItems(options=['App','East Texas', 'Mid-Con', 'North Dakota', 'Rockies', 'South Texas', 'West Texas'], value='App', id='controls-and-radio-item'),
+    #dcc.Graph(figure={}, id='controls-and-graph'),
+    #html.Hr(),
+
+    #dcc.Graph(figure = px.bar(grouped_df, x='Color', y='Count', color='Region',barmode='group', title='New Total MOC Submissions by Region'))
+])
+
+@callback(
+    Output('times-radio', 'options'),
+    Input('regions-radio', 'value'))
+def set_times_options(selected_time):
+    return [{'label': i, 'value' : i} for i in all_options[selected_time]]
+
+@callback(
+    Output('times-radio', 'value'),
+    Input('times-radio', 'options'))
+def set_times_value(available_options):
+    return available_options[0]['value']
+
+@callback(
+    Output('display-selected-values', 'figure'),
+    Input('regions-radio', 'value'),
+    Input('times-radio', 'value'))
+def set_display_children(selected_region, selected_time):
+    if selected_region == 'Appalachia':
+        y = app_df['count']
+    if selected_region == 'East Texas':
+        y= etx_df['count']
+    if selected_region == 'Mid-Con':
+        y = okc_df['count']
+    fig = px.line(app_df, x='Date', y=y, markers=True)
+    return fig
+
+#@callback(
+#    Output(component_id='controls-and-graph', component_property='figure'),
+#    Input(component_id='controls-and-radio-item', component_property='value')
+#)
+
+#def update_graph(col_chosen):
+#    fig = px.bar(new_df, x='Color', y=col_chosen, title=f'Total Number of MOC submission in {col_chosen}', width=1000, height=500)
+#    fig.update_yaxes(range = [0,4000])
+#    fig.update_traces(width=0.25)
+#    return fig
